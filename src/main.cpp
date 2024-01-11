@@ -21,16 +21,15 @@ struct Node {
 
 auto extract_frequencies(const std::string_view input) -> std::priority_queue<Node> {
     std::priority_queue<Node> nodes;
-    std::map<char, Node> symbol_table{};
+    std::map<char, uint32_t> symbol_table{};
 
     for(const char& character : input) {
-        auto& node = symbol_table[character];
-        node.symbol = character;
-        node.frequency++;
+        auto& frequency = symbol_table[character];
+        frequency++;
     }
 
-    for(const auto& [_, node] : symbol_table) {
-        nodes.push(node);
+    for(const auto& [symbol, frequency] : symbol_table) {
+        nodes.push(Node{symbol, frequency});
     }
 
     return nodes;
