@@ -2,38 +2,49 @@
 #include <format>
 #include <iostream>
 #include <map>
+#include <queue>
 #include <string_view>
 #include <vector>
 
 struct Node {
     char symbol;
     uint32_t frequency = 0;
+
+    friend bool operator>(const Node& l, const Node& r) {
+        return l.frequency > r.frequency;
+    }
+
+    friend bool operator<(const Node& l, const Node& r) {
+        return l.frequency < r.frequency;
+    }
 };
 
-auto extract_frequencies(const std::string_view input) -> std::vector<Node> {
-    std::vector<Node> node_list;
-    std::map<char, Node> symbol_lookup{};
+auto extract_frequencies(const std::string_view input) -> std::priority_queue<Node> {
+    std::priority_queue<Node> nodes;
+    std::map<char, Node> symbol_table{};
 
     for(const char& character : input) {
-        auto& node = symbol_lookup[character];
+        auto& node = symbol_table[character];
         node.symbol = character;
         node.frequency++;
     }
 
-    for(const auto& [_, node] : symbol_lookup) {
-        node_list.push_back(node);
+    for(const auto& [_, node] : symbol_table) {
+        nodes.push(node);
     }
 
-    return node_list;
+    return nodes;
 }
 
 auto main() -> int32_t {
     std::string input = "hello world";
 
-    const auto node_list = extract_frequencies(input);
+    auto nodes = extract_frequencies(input);
 
-    for(const auto& node : node_list) {
+    while(!nodes.empty()) {
+        const auto node = nodes.top();
         std::cout << std::format("symbol: {} | frequency: {}\n", node.symbol, node.frequency);
+        nodes.pop();
     }
 
     return 0;

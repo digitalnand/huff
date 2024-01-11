@@ -5,4 +5,4 @@ build:
     meson compile -C bin
 
 run:
-    bin/expr
+    bin/huff
