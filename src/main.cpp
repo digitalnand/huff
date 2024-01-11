@@ -6,9 +6,15 @@
 #include <string_view>
 #include <vector>
 
+template <typename T>
+using min_priority_queue = std::priority_queue<T, std::vector<T>, std::greater<T>>;
+
 struct Node {
     char symbol;
     uint32_t frequency = 0;
+
+    Node* left;
+    Node* right;
 
     friend bool operator>(const Node& l, const Node& r) {
         return l.frequency > r.frequency;
@@ -19,8 +25,8 @@ struct Node {
     }
 };
 
-auto extract_frequencies(const std::string_view input) -> std::priority_queue<Node> {
-    std::priority_queue<Node> nodes;
+auto extract_frequencies(const std::string_view input) -> min_priority_queue<Node> {
+    min_priority_queue<Node> frequencies;
     std::map<char, uint32_t> symbol_table{};
 
     for(const char& character : input) {
@@ -29,21 +35,38 @@ auto extract_frequencies(const std::string_view input) -> std::priority_queue<No
     }
 
     for(const auto& [symbol, frequency] : symbol_table) {
-        nodes.push(Node{symbol, frequency});
+        frequencies.push(Node{symbol, frequency, nullptr, nullptr});
     }
 
-    return nodes;
+    return frequencies;
+}
+
+auto create_huffman_tree(min_priority_queue<Node> frequencies) -> Node {
+    while(frequencies.size() > 1) {
+        const Node first = frequencies.top(); frequencies.pop();
+        const Node second = frequencies.top(); frequencies.pop();
+
+        Node parent;
+        parent.frequency = first.frequency + second.frequency;
+        parent.left = new Node{first};
+        parent.right = new Node{second};
+
+        frequencies.push(parent);
+    }
+
+    return frequencies.top();
 }
 
 auto main() -> int32_t {
     std::string input = "hello world";
 
-    auto nodes = extract_frequencies(input);
+    auto frequencies = extract_frequencies(input);
+    auto tree = create_huffman_tree(frequencies);
 
-    while(!nodes.empty()) {
-        const auto node = nodes.top();
+    while(!frequencies.empty()) {
+        const auto node = frequencies.top();
         std::cout << std::format("symbol: {} | frequency: {}\n", node.symbol, node.frequency);
-        nodes.pop();
+        frequencies.pop();
     }
 
     return 0;
