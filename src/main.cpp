@@ -57,11 +57,34 @@ auto create_huffman_tree(min_priority_queue<Node> frequencies) -> Node {
     return frequencies.top();
 }
 
+auto generate_huffman_codes(const Node& root, std::string current_code = "",
+                           std::map<char, std::string> codes = {}) -> std::map<char, std::string> {
+    if(root.left) {
+        codes = generate_huffman_codes(*root.left, current_code + '0', codes);
+    }
+
+    if(root.symbol) {
+        codes[root.symbol] = current_code;
+        current_code = "";
+    }
+
+    if(root.right) {
+        codes = generate_huffman_codes(*root.right, current_code + '1', codes);
+    }
+
+    return codes;
+}
+
 auto main() -> int32_t {
     std::string input = "hello world";
 
     auto frequencies = extract_frequencies(input);
     auto tree = create_huffman_tree(frequencies);
+    auto huffman_codes = generate_huffman_codes(tree);
+
+    for(const auto& [symbol, code] : huffman_codes) {
+        std::cout << std::format("symbol: {} | code: {}\n", symbol, code);
+    }
 
     while(!frequencies.empty()) {
         const auto node = frequencies.top();
