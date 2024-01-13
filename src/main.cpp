@@ -1,8 +1,11 @@
 #include <cstdint>
 #include <format>
+#include <fstream>
+#include <getopt.h>
 #include <iostream>
 #include <map>
 #include <queue>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -25,13 +28,17 @@ struct Node {
     }
 };
 
-auto extract_frequencies(const std::string_view input) -> min_priority_queue<Node> {
+auto extract_frequencies(const std::string& file_path) -> min_priority_queue<Node> {
+    std::ifstream file(file_path);
     min_priority_queue<Node> frequencies;
     std::map<char, uint32_t> symbol_table{};
+    std::string current_line;
 
-    for(const char& character : input) {
-        auto& frequency = symbol_table[character];
-        frequency++;
+    while(std::getline(file, current_line)) {
+        for(const char& character : current_line) {
+            auto& frequency = symbol_table[character];
+            frequency++;
+        }
     }
 
     for(const auto& [symbol, frequency] : symbol_table) {
@@ -75,11 +82,19 @@ auto generate_huffman_codes(const Node& root, std::string current_code = "",
     return codes;
 }
 
-auto encode_data(const std::string_view input, std::map<char, std::string>& code_table) -> std::string {
+auto encode_data(const std::string& file_path) -> std::string {
     std::string output;
+    std::ifstream file(file_path);
+    std::string current_line;
 
-    for(const char& character : input) {
-        output += code_table[character];
+    const auto frequencies = extract_frequencies(file_path);
+    const auto tree = create_huffman_tree(frequencies);
+    auto code_table = generate_huffman_codes(tree);
+
+    while(std::getline(file, current_line)) {
+        for(const char& character : current_line) {
+            output += code_table[character];
+        }
     }
 
     return output;
@@ -102,19 +117,37 @@ auto decode_data(const std::string_view coded_data, const Node& tree) -> std::st
     return output;
 }
 
-auto main() -> int32_t {
-    std::string input = "Hello, world!";
+auto main(int32_t argc, char** argv) -> int32_t {
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"compress", required_argument, 0, 'c'},
+        {0, 0, 0, 0}
+    };
 
-    auto frequencies = extract_frequencies(input);
-    auto tree = create_huffman_tree(frequencies);
-    auto huffman_codes = generate_huffman_codes(tree);
+    int32_t opt;
+    int32_t option_index;
 
-    std::string coded_input = encode_data(input, huffman_codes);
-    std::cout << std::format("coded input: {}\n", coded_input);
+    while((opt = getopt_long(argc, argv, "hc:", long_options, &option_index)) != -1) {
+        switch(opt) {
+            case 'h':
+                std::cout << std::format("Usage: {} [OPTIONS] INPUT\n\n", argv[0]);
+                std::cout << "Options:\n";
+                for(size_t index = 0; index < (sizeof(long_options) / sizeof(option)) - 1; index++) {
+                    const auto& current_option = long_options[index];
 
-    std::string decoded_input = decode_data(coded_input, tree);
-    std::cout << std::format("decoded input: {}\n", decoded_input);
+                    std::cout << std::format("\t-{}, --{}", (char) current_option.val, current_option.name);
+                    if(current_option.has_arg == required_argument) std::cout << " [argument]";
 
-    std::cout << std::format("decoded input equals to original input: {}\n", decoded_input == input);
+                    std::cout << std::endl;
+                }
+                break;
+            case 'c': {
+                const auto file_path = std::string(optarg);
+                const auto output = encode_data(file_path);
+                std::cout << output << std::endl;
+                break;
+            }
+        }
+    }
     return 0;
 }
