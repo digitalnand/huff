@@ -75,22 +75,24 @@ auto generate_huffman_codes(const Node& root, std::string current_code = "",
     return codes;
 }
 
-auto main() -> int32_t {
-    std::string input = "hello world";
-
+auto encode_data(std::string input) -> std::string {
+    std::string output;
+    
     auto frequencies = extract_frequencies(input);
     auto tree = create_huffman_tree(frequencies);
     auto huffman_codes = generate_huffman_codes(tree);
 
-    for(const auto& [symbol, code] : huffman_codes) {
-        std::cout << std::format("symbol: {} | code: {}\n", symbol, code);
+    for(const char& character : input) {
+        output += huffman_codes[character];
     }
 
-    while(!frequencies.empty()) {
-        const auto node = frequencies.top();
-        std::cout << std::format("symbol: {} | frequency: {}\n", node.symbol, node.frequency);
-        frequencies.pop();
-    }
+    return output;
+}
 
+auto main() -> int32_t {
+    std::string input = "hello world";
+    std::string coded_input = encode_data(input);
+
+    std::cout << coded_input << std::endl;
     return 0;
 }
