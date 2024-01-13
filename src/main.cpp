@@ -29,8 +29,10 @@ struct Node {
     }
 };
 
-auto extract_frequencies(const std::string& file_path) -> min_priority_queue<Node> {
-    std::ifstream file(file_path);
+auto extract_frequencies(std::ifstream& file) -> min_priority_queue<Node> {
+    file.clear();
+    file.seekg(0, file.beg);
+
     min_priority_queue<Node> frequencies;
     std::map<char, uint32_t> symbol_table{};
     std::string current_line;
@@ -94,22 +96,51 @@ auto encode_huffman_tree(const Node& root, std::string output = "") -> std::stri
     return output;
 }
 
-auto encode_data(const std::string& file_path) -> std::string {
-    std::string output;
-    std::ifstream file(file_path);
-    std::string current_line;
+auto encode_content(std::ifstream& file, std::map<char, std::string>& code_table) -> std::vector<char> {
+    file.clear();
+    file.seekg(0, file.beg);
 
-    const auto frequencies = extract_frequencies(file_path);
-    const auto tree = create_huffman_tree(frequencies);
-    auto code_table = generate_huffman_codes(tree);
+    std::vector<char> output;
+
+    std::string current_line;
+    std::string buffer;
 
     while(std::getline(file, current_line)) {
         for(const char& character : current_line) {
-            output += code_table[character];
+            const auto code = code_table[character];
+            for(size_t index = 0; index < code.size(); index++) {
+                buffer += code.at(index);
+                if(buffer.size() % 8 != 0) continue;
+                output.push_back(static_cast<char>(std::stoi(buffer, nullptr, 2)));
+                buffer.clear();
+            }
         }
     }
 
+    if(buffer.size() % 8 != 0) {
+        while(buffer.size() % 8 != 0) buffer += '0';
+        output.push_back(static_cast<char>(std::stoi(buffer, nullptr, 2)));
+    }
+
     return output;
+}
+
+auto create_compressed_file(const std::string& file_path) {
+    std::ifstream input_file(file_path);
+    std::ofstream output_file(std::format("{}.hf", file_path), std::ios::binary | std::ios::out);
+
+    const auto frequencies = extract_frequencies(input_file);
+    const auto tree = create_huffman_tree(frequencies);
+    auto code_table = generate_huffman_codes(tree);
+
+    const auto encoded_content = encode_content(input_file, code_table);
+
+    for(const auto& bit : encoded_content) {
+        output_file.put(bit);
+    }
+
+    input_file.close();
+    output_file.close();
 }
 
 auto decode_data(const std::string_view coded_data, const Node& tree) -> std::string {
@@ -155,8 +186,7 @@ auto main(int32_t argc, char** argv) -> int32_t {
                 break;
             case 'c': {
                 const auto file_path = std::string(optarg);
-                const auto output = encode_data(file_path);
-                std::cout << output << std::endl;
+                create_compressed_file(file_path);
                 break;
             }
         }
