@@ -67,17 +67,15 @@ auto create_huffman_tree(min_priority_queue<Node> frequencies) -> Node {
 
 auto generate_huffman_codes(const Node& root, std::string current_code = "",
                            std::map<char, std::string> codes = {}) -> std::map<char, std::string> {
-    if(root.left) {
+    if(root.left)
         codes = generate_huffman_codes(*root.left, current_code + '0', codes);
-    }
+
+    if(root.right)
+        codes = generate_huffman_codes(*root.right, current_code + '1', codes);
 
     if(root.symbol) {
         codes[root.symbol] = current_code;
         current_code = "";
-    }
-
-    if(root.right) {
-        codes = generate_huffman_codes(*root.right, current_code + '1', codes);
     }
 
     return codes;
