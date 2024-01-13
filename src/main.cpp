@@ -77,7 +77,7 @@ auto generate_huffman_codes(const Node& root, std::string current_code = "",
 
     if(root.symbol) {
         codes[root.symbol] = current_code;
-        current_code = "";
+        current_code.clear();
     }
 
     return codes;
