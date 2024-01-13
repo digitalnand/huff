@@ -75,24 +75,46 @@ auto generate_huffman_codes(const Node& root, std::string current_code = "",
     return codes;
 }
 
-auto encode_data(std::string input) -> std::string {
+auto encode_data(const std::string_view input, std::map<char, std::string>& code_table) -> std::string {
     std::string output;
-    
-    auto frequencies = extract_frequencies(input);
-    auto tree = create_huffman_tree(frequencies);
-    auto huffman_codes = generate_huffman_codes(tree);
 
     for(const char& character : input) {
-        output += huffman_codes[character];
+        output += code_table[character];
+    }
+
+    return output;
+}
+
+auto decode_data(const std::string_view coded_data, const Node& tree) -> std::string {
+    std::string output;
+    Node current_node = tree;
+
+    for(char character : coded_data) {    
+        if(character == '0') current_node = *current_node.left;
+        if(character == '1') current_node = *current_node.right;
+
+        if(current_node.symbol) {
+            output += current_node.symbol;
+            current_node = tree;
+        }
     }
 
     return output;
 }
 
 auto main() -> int32_t {
-    std::string input = "hello world";
-    std::string coded_input = encode_data(input);
+    std::string input = "Hello, world!";
 
-    std::cout << coded_input << std::endl;
+    auto frequencies = extract_frequencies(input);
+    auto tree = create_huffman_tree(frequencies);
+    auto huffman_codes = generate_huffman_codes(tree);
+
+    std::string coded_input = encode_data(input, huffman_codes);
+    std::cout << std::format("coded input: {}\n", coded_input);
+
+    std::string decoded_input = decode_data(coded_input, tree);
+    std::cout << std::format("decoded input: {}\n", decoded_input);
+
+    std::cout << std::format("decoded input equals to original input: {}\n", decoded_input == input);
     return 0;
 }
