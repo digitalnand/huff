@@ -160,6 +160,19 @@ auto decode_data(const std::string_view coded_data, const Node& tree) -> std::st
     return output;
 }
 
+auto print_help(char* executable_name, struct option* options, size_t options_size) -> void {
+    std::cout << std::format("Usage: {} [OPTIONS] INPUT\n\n", executable_name);
+    std::cout << "Options:\n";
+    for(size_t index = 0; index < options_size; index++) {
+        const auto& current_option = options[index];
+
+        std::cout << std::format("\t-{}, --{}", (char) current_option.val, current_option.name);
+        if(current_option.has_arg == required_argument) std::cout << " [argument]";
+
+        std::cout << "\n";
+    }
+}
+
 auto main(int32_t argc, char** argv) -> int32_t {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -173,16 +186,7 @@ auto main(int32_t argc, char** argv) -> int32_t {
     while((opt = getopt_long(argc, argv, "hc:", long_options, &option_index)) != -1) {
         switch(opt) {
             case 'h':
-                std::cout << std::format("Usage: {} [OPTIONS] INPUT\n\n", argv[0]);
-                std::cout << "Options:\n";
-                for(size_t index = 0; index < (sizeof(long_options) / sizeof(option)) - 1; index++) {
-                    const auto& current_option = long_options[index];
-
-                    std::cout << std::format("\t-{}, --{}", (char) current_option.val, current_option.name);
-                    if(current_option.has_arg == required_argument) std::cout << " [argument]";
-
-                    std::cout << std::endl;
-                }
+                print_help(argv[0], long_options, sizeof(long_options) / sizeof(struct option) - 1);
                 break;
             case 'c': {
                 const auto file_path = std::string(optarg);
