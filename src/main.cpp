@@ -23,10 +23,6 @@ struct Node {
     friend bool operator>(const Node& l, const Node& r) {
         return l.frequency > r.frequency;
     }
-
-    friend bool operator<(const Node& l, const Node& r) {
-        return l.frequency < r.frequency;
-    }
 };
 
 auto extract_frequencies(std::ifstream& file) -> min_priority_queue<Node> {
@@ -126,8 +122,8 @@ auto encode_content(std::ifstream& file, std::map<char, std::string>& code_table
 }
 
 auto create_compressed_file(const std::string& file_path) {
-    std::ifstream input_file(file_path);
     std::ofstream output_file(std::format("{}.hf", file_path), std::ios::binary | std::ios::out);
+    std::ifstream input_file(file_path);
 
     const auto frequencies = extract_frequencies(input_file);
     const auto tree = create_huffman_tree(frequencies);
