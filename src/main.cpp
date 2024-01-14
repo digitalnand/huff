@@ -79,19 +79,6 @@ auto generate_huffman_codes(const Node& root, std::string current_code = "",
     return codes;
 }
 
-auto encode_huffman_tree(const Node& root, std::string output = "") -> std::string {
-    if(root.left)
-        output = encode_huffman_tree(*root.left, output + '0');
-
-    if(root.right)
-        output = encode_huffman_tree(*root.right, output + '0');
-
-    if(root.symbol)
-        output += '1' + std::bitset<8>(root.symbol).to_string();
-
-    return output;
-}
-
 auto encode_content(std::ifstream& file, std::map<char, std::string>& code_table) -> std::vector<char> {
     file.clear();
     file.seekg(0, file.beg);
