@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <bitset>
 #include <cstdint>
 #include <format>
@@ -8,13 +9,14 @@
 #include <queue>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 template <typename T>
 using min_priority_queue = std::priority_queue<T, std::vector<T>, std::greater<T>>;
 
 struct Node {
-    char symbol;
+    char symbol = '\0';
     uint32_t frequency = 0;
 
     Node* left;
@@ -71,12 +73,71 @@ auto generate_huffman_codes(const Node& root, std::string current_code = "",
     if(root.right)
         codes = generate_huffman_codes(*root.right, current_code + '1', codes);
 
-    if(root.symbol) {
+    if(root.symbol != '\0') {
         codes[root.symbol] = current_code;
         current_code.clear();
     }
 
     return codes;
+}
+
+auto sort_huffman_codes(std::map<char, std::string> huffman_codes) -> std::vector<std::pair<char, std::string>> {
+    std::vector<std::pair<char, std::string>> sorted_codes;
+
+    for(const auto& [symbol, code] : huffman_codes) {
+        sorted_codes.emplace_back(symbol, code);
+    }
+
+    std::sort(sorted_codes.begin(), sorted_codes.end(), [](const auto& left, const auto& right) {
+        return left.second.size() < right.second.size();
+    });
+
+    return sorted_codes;
+}
+
+auto next_binary(std::string number) -> std::string {
+    size_t next = 1;
+    size_t carry = 0;
+
+    auto flip = [](const char& bit) {
+        return bit == '0' ? '1' : '0';
+    };
+
+    for(size_t index = 1; index <= (next + carry); index++) {
+        if(carry && index > number.size()) {
+            number = '1' + number;
+            carry--;
+            continue;
+        }
+        auto& last = number[number.size() - index];
+        if(last == '1') carry++;
+        last = flip(last);
+    }
+
+    return number;
+}
+
+auto generate_canonical_codes(std::map<char, std::string>& huffman_codes) {
+    std::map<char, std::string> canonical_codes;
+    const auto sorted_codes = sort_huffman_codes(huffman_codes);
+
+    const auto& front_element = sorted_codes.front();
+    for(size_t index = 0; index < front_element.second.size(); index++) {
+        canonical_codes[front_element.first] += "0";
+    }
+
+    auto last_code = canonical_codes[front_element.first];
+    for(size_t index = 1; index < huffman_codes.size(); index++) {
+        const auto& current_element = sorted_codes.at(index);
+
+        auto current_code = next_binary(last_code);
+        while(current_code.size() < sorted_codes.at(index).second.size()) current_code += '0';
+
+        last_code = current_code;
+        canonical_codes[current_element.first] = current_code;
+    }
+
+    return canonical_codes;
 }
 
 auto encode_content(std::ifstream& file, std::map<char, std::string>& code_table) -> std::vector<char> {
@@ -114,9 +175,11 @@ auto create_compressed_file(const std::string& file_path) {
 
     const auto frequencies = extract_frequencies(input_file);
     const auto tree = create_huffman_tree(frequencies);
-    auto code_table = generate_huffman_codes(tree);
 
-    const auto encoded_content = encode_content(input_file, code_table);
+    auto huffman_codes = generate_huffman_codes(tree);
+    auto canonical_codes = generate_canonical_codes(huffman_codes);
+
+    const auto encoded_content = encode_content(input_file, canonical_codes);
 
     for(const auto& bit : encoded_content) {
         output_file.put(bit);
