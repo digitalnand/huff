@@ -148,9 +148,18 @@ std::vector<char> encode_codes_length(std::unordered_map<char, std::string>& cod
     std::vector<char> output;
     std::string buffer;
 
+    uint32_t largest_code_length = 0;
+    for(const auto& [symbol, code] : code_table) {
+        if(code.size() < largest_code_length) continue;
+        largest_code_length = code.size();
+    }
+    const uint32_t bit_count = std::log2(largest_code_length) + 1;
+
+    output.push_back(bit_count);
+
     for(char character = 32; character < 127; character++) {
-        const size_t bit_count = code_table.contains(character) ? std::log2(code_table[character].size()) + 1 : 1;
-        std::string binary = std::bitset<MAX_BITS>(code_table[character].size()).to_string().substr(MAX_BITS - bit_count);
+        const uint32_t code_length = code_table[character].size();
+        std::string binary = std::bitset<MAX_BITS>(code_length).to_string().substr(MAX_BITS - bit_count);
 
         for(const char& bit : binary) {
             buffer += bit;
