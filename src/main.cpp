@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <bitset>
+#include <cmath>
 #include <cstdint>
 #include <format>
 #include <fstream>
@@ -13,6 +15,7 @@
 #include <vector>
 
 #define SUPPORTED_CHARACTERS 95
+#define MAX_BITS (sizeof(int32_t) * 8)
 
 template<typename T>
 using min_priority_queue = std::priority_queue<T, std::vector<T>, std::greater<T>>;
@@ -124,9 +127,8 @@ std::unordered_map<char, std::string> generate_canonical_codes(const std::vector
     std::unordered_map<char, std::string> canonical_codes;
 
     const std::pair<char, std::string>& front_element = huffman_codes.front();
-    for(size_t index = 0; index < front_element.second.size(); index++) {
+    for(size_t index = 0; index < front_element.second.size(); index++)
         canonical_codes[front_element.first] += '0';
-    }
 
     std::string last_code = canonical_codes[front_element.first];
     for(size_t index = 1; index < huffman_codes.size(); index++) {
@@ -140,6 +142,30 @@ std::unordered_map<char, std::string> generate_canonical_codes(const std::vector
     }
 
     return canonical_codes;
+}
+
+std::vector<char> encode_codes_length(std::unordered_map<char, std::string>& code_table) {
+    std::vector<char> output;
+    std::string buffer;
+
+    for(char character = 32; character < 127; character++) {
+        const size_t bit_count = code_table.contains(character) ? std::log2(code_table[character].size()) + 1 : 1;
+        std::string binary = std::bitset<MAX_BITS>(code_table[character].size()).to_string().substr(MAX_BITS - bit_count);
+
+        for(const char& bit : binary) {
+            buffer += bit;
+            if(buffer.size() % 8 != 0) continue;
+            output.push_back(std::stoi(buffer, nullptr, 2));
+            buffer.clear();
+        }
+    }
+
+    if(buffer.size() % 8 != 0) {
+        while(buffer.size() % 8 != 0) buffer += '0';
+        output.push_back(std::stoi(buffer, nullptr, 2));
+    }
+
+    return output;
 }
 
 std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, std::string>& code_table) {
@@ -182,11 +208,11 @@ void create_compressed_file(const std::string& file_path) {
     input_file.clear();
     input_file.seekg(0, input_file.beg);
 
+    const std::vector<char> encoded_codes = encode_codes_length(canonical_codes);
     const std::vector<char> encoded_content = encode_content(input_file, canonical_codes);
 
-    for(const char& bit : encoded_content) {
-        output_file.put(bit);
-    }
+    for(const char& bit : encoded_codes) output_file.put(bit);
+    for(const char& bit : encoded_content) output_file.put(bit);
 
     input_file.close();
     output_file.close();
