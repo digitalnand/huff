@@ -1,115 +1,118 @@
 #include <algorithm>
-#include <bitset>
 #include <cstdint>
 #include <format>
 #include <fstream>
-#include <getopt.h>
 #include <iostream>
 #include <map>
 #include <queue>
+#include <stack>
+#include <stdexcept>
 #include <string>
-#include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-template <typename T>
+#define SUPPORTED_CHARACTERS 95
+
+template<typename T>
 using min_priority_queue = std::priority_queue<T, std::vector<T>, std::greater<T>>;
 
-struct Node {
+struct huff_node {
     char symbol = '\0';
     uint32_t frequency = 0;
 
-    Node* left;
-    Node* right;
+    huff_node* left = nullptr;
+    huff_node* right = nullptr;
 
-    friend bool operator>(const Node& l, const Node& r) {
-        return l.frequency > r.frequency;
+    friend bool operator>(const huff_node& left, const huff_node& right) {
+        return left.frequency > right.frequency;
     }
 };
 
-auto extract_frequencies(std::ifstream& file) -> min_priority_queue<Node> {
-    file.clear();
-    file.seekg(0, file.beg);
+std::unordered_map<char, uint32_t> extract_frequencies(std::ifstream& input) {
+    std::unordered_map<char, uint32_t> frequencies(SUPPORTED_CHARACTERS);
 
-    min_priority_queue<Node> frequencies;
-    std::map<char, uint32_t> symbol_table{};
-    std::string current_line;
-
-    while(std::getline(file, current_line)) {
-        for(const char& character : current_line) {
-            auto& frequency = symbol_table[character];
-            frequency++;
+    std::string line;
+    while(std::getline(input, line)) {
+        for(const char& character : line) {
+            if(character - 32 > SUPPORTED_CHARACTERS)
+                throw std::invalid_argument(std::format("unsupported character: {}\n", static_cast<char>(character)));
+            frequencies[character]++;
         }
-    }
-
-    for(const auto& [symbol, frequency] : symbol_table) {
-        frequencies.push(Node{symbol, frequency, nullptr, nullptr});
     }
 
     return frequencies;
 }
 
-auto create_huffman_tree(min_priority_queue<Node> frequencies) -> Node {
-    while(frequencies.size() > 1) {
-        const Node first = frequencies.top(); frequencies.pop();
-        const Node second = frequencies.top(); frequencies.pop();
+huff_node build_huffman_tree(const std::unordered_map<char, uint32_t>& frequencies) {
+    min_priority_queue<huff_node> nodes;
 
-        Node parent;
+    for(const auto& [symbol, frequency] : frequencies)
+        nodes.push(huff_node{symbol, frequency});
+
+    while(nodes.size() > 1) {
+        const huff_node first = nodes.top();
+        nodes.pop();
+        const huff_node second = nodes.top();
+        nodes.pop();
+
+        huff_node parent;
         parent.frequency = first.frequency + second.frequency;
-        parent.left = new Node{first};
-        parent.right = new Node{second};
+        parent.left = new huff_node{first};
+        parent.right = new huff_node{second};
 
-        frequencies.push(parent);
+        nodes.push(parent);
     }
 
-    return frequencies.top();
+    return nodes.top();
 }
 
-auto generate_huffman_codes(const Node& root, std::string current_code = "",
-                           std::map<char, std::string> codes = {}) -> std::map<char, std::string> {
-    if(root.left)
-        codes = generate_huffman_codes(*root.left, current_code + '0', codes);
+std::vector<std::pair<char, std::string>> generate_huffman_codes(const huff_node& root) {
+    std::vector<std::pair<char, std::string>> huffman_codes;
 
-    if(root.right)
-        codes = generate_huffman_codes(*root.right, current_code + '1', codes);
+    std::stack<std::pair<huff_node, std::string>> nodes;
+    nodes.push(std::make_pair(root, std::string{}));
 
-    if(root.symbol != '\0') {
-        codes[root.symbol] = current_code;
-        current_code.clear();
+    while(!nodes.empty()) {
+        const huff_node current = nodes.top().first;
+        std::string code = nodes.top().second;
+        nodes.pop();
+
+        if(current.left)
+            nodes.push(std::make_pair(*current.left, code + '0'));
+
+        if(current.right)
+            nodes.push(std::make_pair(*current.right, code + '1'));
+
+        if(current.symbol != '\0')
+            huffman_codes.emplace_back(current.symbol, code);
     }
 
-    return codes;
-}
-
-auto sort_huffman_codes(std::map<char, std::string> huffman_codes) -> std::vector<std::pair<char, std::string>> {
-    std::vector<std::pair<char, std::string>> sorted_codes;
-
-    for(const auto& [symbol, code] : huffman_codes) {
-        sorted_codes.emplace_back(symbol, code);
-    }
-
-    std::sort(sorted_codes.begin(), sorted_codes.end(), [](const auto& left, const auto& right) {
-        return left.second.size() < right.second.size();
+    std::sort(huffman_codes.begin(), huffman_codes.end(), [](const auto& left, const auto& right) {
+        const char left_symbol = left.first;
+        const char right_symbol = right.first;
+        const size_t left_size = left.second.size();
+        const size_t right_size = right.second.size();
+        return (left_size == right_size) ? (left_symbol < right_symbol) : (left_size < right_size);
     });
 
-    return sorted_codes;
+    return huffman_codes;
 }
 
-auto next_binary(std::string number) -> std::string {
-    size_t next = 1;
+std::string next_binary(std::string number) {
     size_t carry = 0;
 
-    auto flip = [](const char& bit) {
+    auto flip = [](const char& bit) -> char {
         return bit == '0' ? '1' : '0';
     };
 
-    for(size_t index = 1; index <= (next + carry); index++) {
+    for(size_t index = 1; index <= (1 + carry); index++) {
         if(carry && index > number.size()) {
             number = '1' + number;
             carry--;
             continue;
         }
-        auto& last = number[number.size() - index];
+        char& last = number[number.size() - index];
         if(last == '1') carry++;
         last = flip(last);
     }
@@ -117,21 +120,20 @@ auto next_binary(std::string number) -> std::string {
     return number;
 }
 
-auto generate_canonical_codes(std::map<char, std::string>& huffman_codes) {
+std::map<char, std::string> generate_canonical_codes(std::vector<std::pair<char, std::string>> huffman_codes) {
     std::map<char, std::string> canonical_codes;
-    const auto sorted_codes = sort_huffman_codes(huffman_codes);
 
-    const auto& front_element = sorted_codes.front();
+    const std::pair<char, std::string>& front_element = huffman_codes.front();
     for(size_t index = 0; index < front_element.second.size(); index++) {
-        canonical_codes[front_element.first] += "0";
+        canonical_codes[front_element.first] += '0';
     }
 
-    auto last_code = canonical_codes[front_element.first];
+    std::string last_code = canonical_codes[front_element.first];
     for(size_t index = 1; index < huffman_codes.size(); index++) {
-        const auto& current_element = sorted_codes.at(index);
+        const std::pair<char, std::string>& current_element = huffman_codes.at(index);
 
-        auto current_code = next_binary(last_code);
-        while(current_code.size() < sorted_codes.at(index).second.size()) current_code += '0';
+        std::string current_code = next_binary(last_code);
+        while(current_code.size() < huffman_codes.at(index).second.size()) current_code += '0';
 
         last_code = current_code;
         canonical_codes[current_element.first] = current_code;
@@ -140,10 +142,7 @@ auto generate_canonical_codes(std::map<char, std::string>& huffman_codes) {
     return canonical_codes;
 }
 
-auto encode_content(std::ifstream& file, std::map<char, std::string>& code_table) -> std::vector<char> {
-    file.clear();
-    file.seekg(0, file.beg);
-
+std::vector<char> encode_content(std::ifstream& file, std::map<char, std::string>& code_table) {
     std::vector<char> output;
 
     std::string current_line;
@@ -151,7 +150,7 @@ auto encode_content(std::ifstream& file, std::map<char, std::string>& code_table
 
     while(std::getline(file, current_line)) {
         for(const char& character : current_line) {
-            const auto code = code_table[character];
+            const std::string code = code_table[character];
             for(size_t index = 0; index < code.size(); index++) {
                 buffer += code.at(index);
                 if(buffer.size() % 8 != 0) continue;
@@ -169,19 +168,33 @@ auto encode_content(std::ifstream& file, std::map<char, std::string>& code_table
     return output;
 }
 
-auto create_compressed_file(const std::string& file_path) {
+
+void create_compressed_file(const std::string& file_path) {
     std::ofstream output_file(std::format("{}.hf", file_path), std::ios::binary | std::ios::out);
     std::ifstream input_file(file_path);
 
-    const auto frequencies = extract_frequencies(input_file);
-    const auto tree = create_huffman_tree(frequencies);
+    const std::unordered_map<char, uint32_t> frequencies = extract_frequencies(input_file);
+    const huff_node tree = build_huffman_tree(frequencies);
 
-    auto huffman_codes = generate_huffman_codes(tree);
-    auto canonical_codes = generate_canonical_codes(huffman_codes);
+    const std::vector<std::pair<char, std::string>> huffman_codes = generate_huffman_codes(tree);
+    std::map<char, std::string> canonical_codes = generate_canonical_codes(huffman_codes);
 
-    const auto encoded_content = encode_content(input_file, canonical_codes);
+    for(const auto& pair : huffman_codes) {
+        std::cout << std::format("{}: {}\n", pair.first, pair.second);
+    }
 
-    for(const auto& bit : encoded_content) {
+    std::cout << "\n";
+
+    for(const auto& [symbol, code] : canonical_codes) {
+        std::cout << std::format("{}: {}\n", symbol, code);
+    }
+
+    input_file.clear();
+    input_file.seekg(0, input_file.beg);
+
+    const std::vector<char> encoded_content = encode_content(input_file, canonical_codes);
+
+    for(const char& bit : encoded_content) {
         output_file.put(bit);
     }
 
@@ -189,57 +202,13 @@ auto create_compressed_file(const std::string& file_path) {
     output_file.close();
 }
 
-auto decode_data(const std::string_view coded_data, const Node& tree) -> std::string {
-    std::string output;
-    Node current_node = tree;
-
-    for(char character : coded_data) {    
-        if(character == '0') current_node = *current_node.left;
-        if(character == '1') current_node = *current_node.right;
-
-        if(current_node.symbol) {
-            output += current_node.symbol;
-            current_node = tree;
-        }
+int32_t main(int32_t argc, char* argv[]) {
+    if(argc < 2) {
+        std::cout << std::format("Usage: {} [FILE]\n", argv[0]);
+        exit(1);
     }
 
-    return output;
-}
-
-auto print_help(char* executable_name, struct option* options, size_t options_size) -> void {
-    std::cout << std::format("Usage: {} [OPTIONS] INPUT\n\n", executable_name);
-    std::cout << "Options:\n";
-    for(size_t index = 0; index < options_size; index++) {
-        const auto& current_option = options[index];
-
-        std::cout << std::format("\t-{}, --{}", (char) current_option.val, current_option.name);
-        if(current_option.has_arg == required_argument) std::cout << " [argument]";
-
-        std::cout << "\n";
-    }
-}
-
-auto main(int32_t argc, char** argv) -> int32_t {
-    static struct option long_options[] = {
-        {"help", no_argument, 0, 'h'},
-        {"compress", required_argument, 0, 'c'},
-        {0, 0, 0, 0}
-    };
-
-    int32_t opt;
-    int32_t option_index;
-
-    while((opt = getopt_long(argc, argv, "hc:", long_options, &option_index)) != -1) {
-        switch(opt) {
-            case 'h':
-                print_help(argv[0], long_options, sizeof(long_options) / sizeof(struct option) - 1);
-                break;
-            case 'c': {
-                const auto file_path = std::string(optarg);
-                create_compressed_file(file_path);
-                break;
-            }
-        }
-    }
+    const std::string file_path = argv[1];
+    create_compressed_file(file_path);
     return 0;
 }
