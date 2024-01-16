@@ -227,6 +227,16 @@ void create_compressed_file(const std::string& file_path) {
     output_file.close();
 }
 
+uint16_t decode_bits_length(std::ifstream& compressed_file) {
+    compressed_file.clear();
+    compressed_file.seekg(0, std::ios::beg);
+
+    char buffer[8];
+    compressed_file.read(buffer, 8);
+
+    return std::bitset<8>(*buffer).to_ulong();
+}
+
 int32_t main(int32_t argc, char* argv[]) {
     if(argc < 2) {
         std::cout << std::format("Usage: {} [FILE]\n", argv[0]);
