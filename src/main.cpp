@@ -120,8 +120,8 @@ std::string next_binary(std::string number) {
     return number;
 }
 
-std::map<char, std::string> generate_canonical_codes(const std::vector<std::pair<char, std::string>>& huffman_codes) {
-    std::map<char, std::string> canonical_codes;
+std::unordered_map<char, std::string> generate_canonical_codes(const std::vector<std::pair<char, std::string>>& huffman_codes) {
+    std::unordered_map<char, std::string> canonical_codes;
 
     const std::pair<char, std::string>& front_element = huffman_codes.front();
     for(size_t index = 0; index < front_element.second.size(); index++) {
@@ -142,7 +142,7 @@ std::map<char, std::string> generate_canonical_codes(const std::vector<std::pair
     return canonical_codes;
 }
 
-std::vector<char> encode_content(std::ifstream& file, std::map<char, std::string>& code_table) {
+std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, std::string>& code_table) {
     std::vector<char> output;
 
     std::string current_line;
@@ -177,7 +177,7 @@ void create_compressed_file(const std::string& file_path) {
     const huff_node tree = build_huffman_tree(frequencies);
 
     const std::vector<std::pair<char, std::string>> huffman_codes = generate_huffman_codes(tree);
-    std::map<char, std::string> canonical_codes = generate_canonical_codes(huffman_codes);
+    std::unordered_map<char, std::string> canonical_codes = generate_canonical_codes(huffman_codes);
 
     input_file.clear();
     input_file.seekg(0, input_file.beg);
