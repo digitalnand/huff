@@ -179,16 +179,6 @@ void create_compressed_file(const std::string& file_path) {
     const std::vector<std::pair<char, std::string>> huffman_codes = generate_huffman_codes(tree);
     std::map<char, std::string> canonical_codes = generate_canonical_codes(huffman_codes);
 
-    for(const auto& pair : huffman_codes) {
-        std::cout << std::format("{}: {}\n", pair.first, pair.second);
-    }
-
-    std::cout << "\n";
-
-    for(const auto& [symbol, code] : canonical_codes) {
-        std::cout << std::format("{}: {}\n", symbol, code);
-    }
-
     input_file.clear();
     input_file.seekg(0, input_file.beg);
 
