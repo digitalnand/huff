@@ -39,7 +39,7 @@ std::unordered_map<char, uint32_t> extract_frequencies(std::ifstream& input) {
     while(std::getline(input, line)) {
         for(const char& character : line) {
             if(character - 32 > SUPPORTED_CHARACTERS)
-                throw std::invalid_argument(std::format("unsupported character: {}\n", static_cast<char>(character)));
+                throw std::invalid_argument(std::format("unsupported character: {}\n", character));
             frequencies[character]++;
         }
     }
@@ -227,14 +227,68 @@ void create_compressed_file(const std::string& file_path) {
     output_file.close();
 }
 
-uint16_t decode_bits_length(std::ifstream& compressed_file) {
-    compressed_file.clear();
-    compressed_file.seekg(0, std::ios::beg);
+struct Decoder {
+    std::ifstream file;
+
+    uint16_t bits_length = 0;
+    size_t index = 0;
+
+    Decoder(const std::string&);
+    std::bitset<8> next_byte();
+    void decode_bits_length();
+    std::map<char, uint16_t> decode_codes_length();
+};
+
+Decoder::Decoder(const std::string& compressed_file_path) {
+    file.open(compressed_file_path, std::ios::binary);
+}
+
+std::bitset<8> Decoder::next_byte() {
+    file.clear();
+    file.seekg(index, std::ios::beg);
 
     char buffer[8];
-    compressed_file.read(buffer, 8);
+    file.read(buffer, 8);
+    index++;
 
-    return std::bitset<8>(*buffer).to_ulong();
+    return std::bitset<8>(*buffer);
+}
+
+void Decoder::decode_bits_length() {
+    bits_length = next_byte().to_ulong();
+}
+
+std::map<char, uint16_t> Decoder::decode_codes_length() {
+    decode_bits_length();
+
+    std::map<char, uint16_t> codes_length;
+
+    std::string carry;
+    char current = 32 - 1;
+
+    while(index <= std::ceil(SUPPORTED_CHARACTERS / 8.0) * bits_length) {
+        std::string byte = next_byte().to_string();
+
+        if(!carry.empty()) {
+            byte = carry + byte;
+            carry.clear();
+        }
+
+        for(size_t position = 0; position < byte.size(); position += bits_length) {
+            const std::string binary_length = byte.substr(position, bits_length);
+
+            if(binary_length.size() < bits_length) {
+                carry = binary_length;
+                break;
+            }
+
+            current++;
+            const uint16_t code_length = std::bitset<8>(binary_length).to_ulong();
+            if(code_length > 0) codes_length[current] = code_length;
+        }
+    }
+
+    return codes_length;
 }
 
 int32_t main(int32_t argc, char* argv[]) {
