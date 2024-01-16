@@ -180,7 +180,7 @@ std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, s
             for(size_t index = 0; index < code.size(); index++) {
                 buffer += code.at(index);
                 if(buffer.size() % 8 != 0) continue;
-                output.push_back(static_cast<char>(std::stoi(buffer, nullptr, 2)));
+                output.push_back(std::stoi(buffer, nullptr, 2));
                 buffer.clear();
             }
         }
@@ -188,7 +188,7 @@ std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, s
 
     if(buffer.size() % 8 != 0) {
         while(buffer.size() % 8 != 0) buffer += '0';
-        output.push_back(static_cast<char>(std::stoi(buffer, nullptr, 2)));
+        output.push_back(std::stoi(buffer, nullptr, 2));
     }
 
     return output;
