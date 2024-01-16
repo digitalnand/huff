@@ -120,7 +120,7 @@ std::string next_binary(std::string number) {
     return number;
 }
 
-std::map<char, std::string> generate_canonical_codes(std::vector<std::pair<char, std::string>> huffman_codes) {
+std::map<char, std::string> generate_canonical_codes(const std::vector<std::pair<char, std::string>>& huffman_codes) {
     std::map<char, std::string> canonical_codes;
 
     const std::pair<char, std::string>& front_element = huffman_codes.front();
