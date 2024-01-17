@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <format>
 #include <fstream>
+#include <getopt.h>
 #include <iostream>
 #include <map>
 #include <queue>
@@ -242,6 +243,7 @@ void create_compressed_file(const std::string& file_path) {
 
 struct Decoder {
     std::ifstream file;
+    std::string target_file_path;
 
     size_t bits_length = 0;
     size_t index = 0;
@@ -253,10 +255,12 @@ struct Decoder {
     std::unordered_map<char, std::string> generate_codes();
     Node recreate_huffman_tree();
     std::string decode_content();
+    void create_decompressed_file();
 };
 
 Decoder::Decoder(const std::string& compressed_file_path) {
     file.open(compressed_file_path, std::ios::binary);
+    target_file_path = compressed_file_path;
 }
 
 std::bitset<8> Decoder::next_byte() {
@@ -391,13 +395,57 @@ std::string Decoder::decode_content() {
     return output;
 }
 
-int32_t main(int32_t argc, char* argv[]) {
-    if(argc < 2) {
-        std::cout << std::format("Usage: {} [FILE]\n", argv[0]);
-        exit(1);
-    }
+void Decoder::create_decompressed_file() {
+    std::string name = target_file_path.substr(0, target_file_path.find_last_of('.'));
+    std::ofstream output_file(name, std::ios::out);
 
-    const std::string file_path = argv[1];
-    create_compressed_file(file_path);
+    const auto content = decode_content();
+    output_file.write(content.c_str(), content.size());
+
+    output_file.close();
+}
+
+void print_help(char* executable_name, struct option* options, size_t options_size) {
+    std::cout << std::format("Usage: {} [OPTIONS] INPUT\n\n", executable_name);
+    std::cout << "Options:\n";
+    for(size_t index = 0; index < options_size; index++) {
+        const auto& current_option = options[index];
+
+        std::cout << std::format("\t-{}, --{}", (char) current_option.val, current_option.name);
+        if(current_option.has_arg == required_argument) std::cout << " [argument]";
+
+        std::cout << "\n";
+    }
+}
+
+int32_t main(int32_t argc, char* argv[]) {
+    static struct option long_options[] = {
+        {"help", no_argument, 0, 'h'},
+        {"compress", required_argument, 0, 'c'},
+        {"decompress", required_argument, 0, 'd'},
+        {0, 0, 0, 0}
+    };
+
+    int32_t opt;
+    int32_t option_index;
+
+    while((opt = getopt_long(argc, argv, "hc:d:", long_options, &option_index)) != -1) {
+        switch(opt) {
+            case 'h':
+                print_help(argv[0], long_options, sizeof(long_options) / sizeof(struct option) - 1);
+                break;
+            case 'c': {
+                const auto file_path = std::string(optarg);
+                create_compressed_file(file_path);
+                break;
+            }
+            case 'd': {
+                const auto file_path = std::string(optarg);
+                Decoder decoder(file_path);
+                decoder.create_decompressed_file();
+                break;
+            }
+        }
+    }
     return 0;
 }
