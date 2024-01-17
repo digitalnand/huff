@@ -24,14 +24,14 @@
 template<typename T>
 using min_priority_queue = std::priority_queue<T, std::vector<T>, std::greater<T>>;
 
-struct huff_node {
+struct Node {
     char symbol = '\0';
     uint32_t frequency = 0;
 
-    huff_node* left = nullptr;
-    huff_node* right = nullptr;
+    Node* left = nullptr;
+    Node* right = nullptr;
 
-    friend bool operator>(const huff_node& left, const huff_node& right) {
+    friend bool operator>(const Node& left, const Node& right) {
         return left.frequency > right.frequency;
     }
 };
@@ -53,22 +53,22 @@ std::unordered_map<char, uint32_t> extract_frequencies(std::ifstream& input) {
     return frequencies;
 }
 
-huff_node build_huffman_tree(const std::unordered_map<char, uint32_t>& frequencies) {
-    min_priority_queue<huff_node> nodes;
+Node build_huffman_tree(const std::unordered_map<char, uint32_t>& frequencies) {
+    min_priority_queue<Node> nodes;
 
     for(const auto& [symbol, frequency] : frequencies)
-        nodes.push(huff_node{symbol, frequency});
+        nodes.push(Node{symbol, frequency});
 
     while(nodes.size() > 1) {
-        const huff_node first = nodes.top();
+        const Node first = nodes.top();
         nodes.pop();
-        const huff_node second = nodes.top();
+        const Node second = nodes.top();
         nodes.pop();
 
-        huff_node parent;
+        Node parent;
         parent.frequency = first.frequency + second.frequency;
-        parent.left = new huff_node{first};
-        parent.right = new huff_node{second};
+        parent.left = new Node{first};
+        parent.right = new Node{second};
 
         nodes.push(parent);
     }
@@ -76,14 +76,14 @@ huff_node build_huffman_tree(const std::unordered_map<char, uint32_t>& frequenci
     return nodes.top();
 }
 
-std::vector<std::pair<char, std::string>> generate_huffman_codes(const huff_node& root) {
+std::vector<std::pair<char, std::string>> generate_huffman_codes(const Node& root) {
     std::vector<std::pair<char, std::string>> huffman_codes;
 
-    std::stack<std::pair<huff_node, std::string>> nodes;
+    std::stack<std::pair<Node, std::string>> nodes;
     nodes.push(std::make_pair(root, std::string{}));
 
     while(!nodes.empty()) {
-        const huff_node current = nodes.top().first;
+        const Node current = nodes.top().first;
         std::string code = nodes.top().second;
         nodes.pop();
 
@@ -222,7 +222,7 @@ void create_compressed_file(const std::string& file_path) {
     std::ifstream input_file(file_path);
 
     const std::unordered_map<char, uint32_t> frequencies = extract_frequencies(input_file);
-    const huff_node tree = build_huffman_tree(frequencies);
+    const Node tree = build_huffman_tree(frequencies);
 
     const std::vector<std::pair<char, std::string>> huffman_codes = generate_huffman_codes(tree);
     std::unordered_map<char, std::string> canonical_codes = generate_canonical_codes(huffman_codes);
@@ -250,7 +250,8 @@ struct Decoder {
     std::bitset<8> next_byte();
     void decode_bits_length();
     std::vector<std::pair<char, uint16_t>> decode_codes_length();
-    std::unordered_map<char, uint8_t> generate_codes();
+    std::unordered_map<char, std::string> generate_codes();
+    Node recreate_huffman_tree();
 };
 
 Decoder::Decoder(const std::string& compressed_file_path) {
@@ -313,26 +314,52 @@ std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length() {
     return codes_length;
 }
 
-std::unordered_map<char, uint8_t> Decoder::generate_codes() {
-    std::unordered_map<char, uint8_t> canonical_codes;
+std::unordered_map<char, std::string> Decoder::generate_codes() {
+    std::unordered_map<char, std::string> canonical_codes;
     const auto codes_length = decode_codes_length();
 
     const auto& [front_symbol, front_length] = codes_length.front();
 
+    for(size_t index = 0 ; index < front_length; index++)
+        canonical_codes[front_symbol] += '0';
+
     uint8_t last_code = 0;
     auto last_length = front_length;
 
-    canonical_codes[front_symbol] = last_code;
-
     for(size_t index = 1; index < codes_length.size(); index++) {
         const auto& [next_symbol, next_length] = codes_length.at(index);
-        canonical_codes[next_symbol] = (last_code + 1) << (next_length - last_length);
 
-        last_code = canonical_codes[next_symbol];
+        last_code = (last_code + 1) << (next_length - last_length);;
         last_length = next_length;
+
+        canonical_codes[next_symbol] = std::bitset<MAX_BITS>(last_code).to_string().substr(MAX_BITS - next_length);
     }
 
     return canonical_codes;
+}
+
+Node Decoder::recreate_huffman_tree() {
+    Node root{};
+
+    const auto code_table = generate_codes();
+
+    for(const auto& [symbol, code] : code_table) {
+        Node* current = &root;
+        for(const auto& position : code) {
+            if(position == '0') {
+                if(!current->left) current->left = new Node{};
+                current = current->left;
+            }
+
+            if(position == '1') {
+                if(!current->right) current->right = new Node{};
+                current = current->right;
+            }
+        }
+        current->symbol = symbol;
+    }
+
+    return root;
 }
 
 int32_t main(int32_t argc, char* argv[]) {
