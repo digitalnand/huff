@@ -14,8 +14,12 @@
 #include <utility>
 #include <vector>
 
-#define SUPPORTED_CHARACTERS 95
+#define FIRST_CHARACTER 0
+#define SUPPORTED_CHARACTERS 127
 #define MAX_BITS (sizeof(int32_t) * 8)
+
+#define NEW_LINE '\n'
+#define END_OF_TEXT '\x3'
 
 template<typename T>
 using min_priority_queue = std::priority_queue<T, std::vector<T>, std::greater<T>>;
@@ -34,15 +38,17 @@ struct huff_node {
 
 std::unordered_map<char, uint32_t> extract_frequencies(std::ifstream& input) {
     std::unordered_map<char, uint32_t> frequencies(SUPPORTED_CHARACTERS);
-
     std::string line;
+
     while(std::getline(input, line)) {
-        for(const char& character : line) {
-            if(character - 32 > SUPPORTED_CHARACTERS)
+        for(const char& character : line + NEW_LINE) {
+            if(character < FIRST_CHARACTER)
                 throw std::invalid_argument(std::format("unsupported character: {}\n", character));
             frequencies[character]++;
         }
     }
+
+    frequencies[END_OF_TEXT]++;
 
     return frequencies;
 }
@@ -157,7 +163,7 @@ std::vector<char> encode_codes_length(std::unordered_map<char, std::string>& cod
 
     output.push_back(bit_count);
 
-    for(char character = 32; character < 127; character++) {
+    for(char character = FIRST_CHARACTER; character < SUPPORTED_CHARACTERS; character++) {
         const uint32_t code_length = code_table[character].size();
         std::string binary = std::bitset<MAX_BITS>(code_length).to_string().substr(MAX_BITS - bit_count);
 
@@ -180,11 +186,11 @@ std::vector<char> encode_codes_length(std::unordered_map<char, std::string>& cod
 std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, std::string>& code_table) {
     std::vector<char> output;
 
-    std::string current_line;
     std::string buffer;
+    std::string line;
 
-    while(std::getline(file, current_line)) {
-        for(const char& character : current_line) {
+    while(std::getline(file, line)) {
+        for(const char& character : line + NEW_LINE) {
             const std::string code = code_table[character];
             for(size_t index = 0; index < code.size(); index++) {
                 buffer += code.at(index);
@@ -193,6 +199,13 @@ std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, s
                 buffer.clear();
             }
         }
+    }
+
+    for(size_t index = 0; index < code_table[END_OF_TEXT].size(); index++) {
+        buffer += code_table[END_OF_TEXT].at(index);
+        if(buffer.size() % 8 != 0) continue;
+        output.push_back(std::stoi(buffer, nullptr, 2));
+        buffer.clear();
     }
 
     if(buffer.size() % 8 != 0) {
@@ -265,7 +278,7 @@ std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length() {
     std::vector<std::pair<char, uint16_t>> codes_length;
 
     std::string carry;
-    char current = 32 - 1;
+    char current = FIRST_CHARACTER;
 
     while(index <= std::ceil(SUPPORTED_CHARACTERS / 8.0) * bits_length) {
         std::string byte = next_byte().to_string();
@@ -283,9 +296,9 @@ std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length() {
                 break;
             }
 
-            current++;
             const uint16_t code_length = std::bitset<8>(binary_length).to_ulong();
             if(code_length > 0) codes_length.emplace_back(current, code_length);
+            current++;
         }
     }
 
