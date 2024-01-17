@@ -230,13 +230,14 @@ void create_compressed_file(const std::string& file_path) {
 struct Decoder {
     std::ifstream file;
 
-    uint16_t bits_length = 0;
+    size_t bits_length = 0;
     size_t index = 0;
 
     Decoder(const std::string&);
     std::bitset<8> next_byte();
     void decode_bits_length();
-    std::map<char, uint16_t> decode_codes_length();
+    std::vector<std::pair<char, uint16_t>> decode_codes_length();
+    std::unordered_map<char, uint8_t> generate_codes();
 };
 
 Decoder::Decoder(const std::string& compressed_file_path) {
@@ -258,10 +259,10 @@ void Decoder::decode_bits_length() {
     bits_length = next_byte().to_ulong();
 }
 
-std::map<char, uint16_t> Decoder::decode_codes_length() {
+std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length() {
     decode_bits_length();
 
-    std::map<char, uint16_t> codes_length;
+    std::vector<std::pair<char, uint16_t>> codes_length;
 
     std::string carry;
     char current = 32 - 1;
@@ -284,11 +285,41 @@ std::map<char, uint16_t> Decoder::decode_codes_length() {
 
             current++;
             const uint16_t code_length = std::bitset<8>(binary_length).to_ulong();
-            if(code_length > 0) codes_length[current] = code_length;
+            if(code_length > 0) codes_length.emplace_back(current, code_length);
         }
     }
 
+    std::sort(codes_length.begin(), codes_length.end(), [](const auto& left, const auto& right) {
+        const auto left_symbol = left.first;
+        const auto right_symbol = right.first;
+        const auto left_length = left.second;
+        const auto right_length = right.second;
+        return (left_length == right_length) ? (left_symbol < right_symbol) : (left_length < right_length);
+    });
+
     return codes_length;
+}
+
+std::unordered_map<char, uint8_t> Decoder::generate_codes() {
+    std::unordered_map<char, uint8_t> canonical_codes;
+    const auto codes_length = decode_codes_length();
+
+    const auto& [front_symbol, front_length] = codes_length.front();
+
+    uint8_t last_code = 0;
+    auto last_length = front_length;
+
+    canonical_codes[front_symbol] = last_code;
+
+    for(size_t index = 1; index < codes_length.size(); index++) {
+        const auto& [next_symbol, next_length] = codes_length.at(index);
+        canonical_codes[next_symbol] = (last_code + 1) << (next_length - last_length);
+
+        last_code = canonical_codes[next_symbol];
+        last_length = next_length;
+    }
+
+    return canonical_codes;
 }
 
 int32_t main(int32_t argc, char* argv[]) {
