@@ -252,6 +252,7 @@ struct Decoder {
     std::vector<std::pair<char, uint16_t>> decode_codes_length();
     std::unordered_map<char, std::string> generate_codes();
     Node recreate_huffman_tree();
+    std::string decode_content();
 };
 
 Decoder::Decoder(const std::string& compressed_file_path) {
@@ -360,6 +361,34 @@ Node Decoder::recreate_huffman_tree() {
     }
 
     return root;
+}
+
+std::string Decoder::decode_content() {
+    std::string output;
+    const auto tree = recreate_huffman_tree();
+
+    std::string byte = next_byte().to_string();
+
+    Node current = tree;
+    for(size_t index = 0; index < byte.size(); index++) {
+        const auto bit = byte.at(index);
+
+        if(bit == '0') current = *current.left;
+        if(bit == '1') current = *current.right;
+
+        if(current.symbol) {
+            if(current.symbol == END_OF_TEXT) break;
+            output += current.symbol;
+            current = tree;
+        }
+
+        if((index + 1) % 8 == 0) {
+            byte = next_byte().to_string();
+            index = -1;
+        }
+    }
+
+    return output;
 }
 
 int32_t main(int32_t argc, char* argv[]) {
