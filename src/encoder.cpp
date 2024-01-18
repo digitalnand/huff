@@ -101,6 +101,15 @@ std::unordered_map<char, std::string> generate_canonical_codes(const std::vector
     return canonical_codes;
 }
 
+inline void append_byte(std::string& buffer, std::vector<char>& target) {
+    target.push_back(std::stoi(buffer, nullptr, 2));
+    buffer.clear();
+}
+
+inline void fill(std::string& buffer) {
+    while(buffer.size() % 8 != 0) buffer += '0';
+}
+
 std::vector<char> encode_codes_length(std::unordered_map<char, std::string>& code_table) {
     std::vector<char> output;
     std::string buffer;
@@ -120,15 +129,13 @@ std::vector<char> encode_codes_length(std::unordered_map<char, std::string>& cod
 
         for(const auto& bit : binary) {
             buffer += bit;
-            if(buffer.size() % 8 != 0) continue;
-            output.push_back(std::stoi(buffer, nullptr, 2));
-            buffer.clear();
+            if(buffer.size() % 8 == 0) append_byte(buffer, output);
         }
     }
 
     if(buffer.size() % 8 != 0) {
-        while(buffer.size() % 8 != 0) buffer += '0';
-        output.push_back(std::stoi(buffer, nullptr, 2));
+        fill(buffer);
+        append_byte(buffer, output);;
     }
 
     return output;
@@ -145,23 +152,19 @@ std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, s
             const auto code = code_table[character];
             for(size_t index = 0; index < code.size(); index++) {
                 buffer += code.at(index);
-                if(buffer.size() % 8 != 0) continue;
-                output.push_back(std::stoi(buffer, nullptr, 2));
-                buffer.clear();
+                if(buffer.size() % 8 == 0) append_byte(buffer, output);
             }
         }
     }
 
     for(size_t index = 0; index < code_table[END_OF_TEXT].size(); index++) {
         buffer += code_table[END_OF_TEXT].at(index);
-        if(buffer.size() % 8 != 0) continue;
-        output.push_back(std::stoi(buffer, nullptr, 2));
-        buffer.clear();
+        if(buffer.size() % 8 == 0) append_byte(buffer, output);
     }
 
     if(buffer.size() % 8 != 0) {
-        while(buffer.size() % 8 != 0) buffer += '0';
-        output.push_back(std::stoi(buffer, nullptr, 2));
+        fill(buffer);
+        append_byte(buffer, output);;
     }
 
     return output;
