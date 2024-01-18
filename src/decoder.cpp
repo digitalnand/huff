@@ -19,13 +19,11 @@ std::bitset<8> Decoder::next_byte() {
     return std::bitset<8>(*buffer);
 }
 
-void Decoder::decode_bits_length() {
-    bits_length = next_byte().to_ulong();
+size_t Decoder::decode_bits_length() {
+    return next_byte().to_ulong();
 }
 
-std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length() {
-    decode_bits_length();
-
+std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length(const size_t& bits_length) {
     std::vector<std::pair<char, uint16_t>> codes_length;
 
     std::string carry;
@@ -62,9 +60,8 @@ std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length() {
     return codes_length;
 }
 
-std::unordered_map<char, std::string> Decoder::generate_codes() {
+std::unordered_map<char, std::string> Decoder::regenerate_codes(const std::vector<std::pair<char, uint16_t>>& codes_length) {
     std::unordered_map<char, std::string> canonical_codes;
-    const auto codes_length = decode_codes_length();
 
     const auto& [front_symbol, front_length] = codes_length.front();
 
@@ -86,10 +83,8 @@ std::unordered_map<char, std::string> Decoder::generate_codes() {
     return canonical_codes;
 }
 
-Node Decoder::recreate_huffman_tree() {
+Node Decoder::recreate_huffman_tree(const std::unordered_map<char, std::string>& code_table) {
     Node root{};
-
-    const auto code_table = generate_codes();
 
     for(const auto& [symbol, code] : code_table) {
         auto* current = &root;
@@ -110,9 +105,8 @@ Node Decoder::recreate_huffman_tree() {
     return root;
 }
 
-std::string Decoder::decode_content() {
+std::string Decoder::decode_content(const Node& tree) {
     std::string output;
-    const auto tree = recreate_huffman_tree();
 
     auto byte = next_byte().to_string();
 
@@ -142,7 +136,12 @@ void Decoder::create_decompressed_file() {
     const auto name = target_file_path.substr(0, target_file_path.find_last_of('.'));
     std::ofstream output_file(name, std::ios::out);
 
-    const auto content = decode_content();
+    const auto bits_length = decode_bits_length();
+    const auto codes_length = decode_codes_length(bits_length);
+    const auto codes = regenerate_codes(codes_length);
+    const auto tree = recreate_huffman_tree(codes);
+    const auto content = decode_content(tree);
+
     output_file.write(content.c_str(), content.size());
 
     output_file.close();

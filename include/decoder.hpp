@@ -9,18 +9,19 @@
 #include "types.hpp"
 
 struct Decoder {
-    private: std::ifstream file;
-    private: std::string target_file_path;
+    private:
+        std::ifstream file;
+        std::string target_file_path;
+        size_t index = 0;
 
-    private: size_t bits_length = 0;
-    private: size_t index = 0;
+        std::bitset<8> next_byte();
+        size_t decode_bits_length();
+        std::vector<std::pair<char, uint16_t>> decode_codes_length(const size_t&);
+        std::unordered_map<char, std::string> regenerate_codes(const std::vector<std::pair<char, uint16_t>>&);
+        Node recreate_huffman_tree(const std::unordered_map<char, std::string>&);
+        std::string decode_content(const Node&);
 
-    public: Decoder(const std::string&);
-    private: std::bitset<8> next_byte();
-    private: void decode_bits_length();
-    private: std::vector<std::pair<char, uint16_t>> decode_codes_length();
-    private: std::unordered_map<char, std::string> generate_codes();
-    private: Node recreate_huffman_tree();
-    private: std::string decode_content();
-    public: void create_decompressed_file();
+    public:
+        Decoder(const std::string&);
+        void create_decompressed_file();
 };
