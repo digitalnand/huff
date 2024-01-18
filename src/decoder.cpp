@@ -148,4 +148,5 @@ void Decoder::create_decompressed_file() {
     output_file.write(content.c_str(), content.size());
 
     output_file.close();
+    file.close();
 }
