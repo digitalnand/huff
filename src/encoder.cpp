@@ -76,27 +76,6 @@ std::vector<std::pair<char, std::string>> generate_huffman_codes(const Node& roo
     return huffman_codes;
 }
 
-std::string next_binary(std::string number) {
-    size_t carry = 0;
-
-    auto flip = [](const char& bit) -> char {
-        return bit == '0' ? '1' : '0';
-    };
-
-    for(size_t index = 1; index <= (1 + carry); index++) {
-        if(carry && index > number.size()) {
-            number = '1' + number;
-            carry--;
-            continue;
-        }
-        char& last = number[number.size() - index];
-        if(last == '1') carry++;
-        last = flip(last);
-    }
-
-    return number;
-}
-
 std::unordered_map<char, std::string> generate_canonical_codes(const std::vector<std::pair<char, std::string>>& huffman_codes) {
     std::unordered_map<char, std::string> canonical_codes;
 
@@ -104,15 +83,20 @@ std::unordered_map<char, std::string> generate_canonical_codes(const std::vector
     for(size_t index = 0; index < front_code.size(); index++)
         canonical_codes[front_symbol] += '0';
 
-    auto last_code = canonical_codes[front_symbol];
+    uint8_t last_code = 0;
+    size_t last_length = front_code.size();
+
     for(size_t index = 1; index < huffman_codes.size(); index++) {
         const auto& [current_symbol, current_code] = huffman_codes.at(index);
 
-        auto next_code = next_binary(last_code);
-        while(next_code.size() < current_code.size()) next_code += '0';
+        auto next_code = last_code + 1;
+        size_t difference = current_code.size() - last_length;
+        next_code <<= difference;
 
         last_code = next_code;
-        canonical_codes[current_symbol] = next_code;
+        last_length = current_code.size();
+
+        canonical_codes[current_symbol] = std::bitset<MAX_BITS>(next_code).to_string().substr(MAX_BITS - current_code.size());
     }
 
     return canonical_codes;
