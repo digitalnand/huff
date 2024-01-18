@@ -32,7 +32,7 @@ std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length() {
     char current = FIRST_CHARACTER;
 
     while(index <= std::ceil(SUPPORTED_CHARACTERS / 8.0) * bits_length) {
-        std::string byte = next_byte().to_string();
+        auto byte = next_byte().to_string();
 
         if(!carry.empty()) {
             byte = carry + byte;
@@ -40,7 +40,7 @@ std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length() {
         }
 
         for(size_t position = 0; position < byte.size(); position += bits_length) {
-            const std::string binary_length = byte.substr(position, bits_length);
+            const auto binary_length = byte.substr(position, bits_length);
 
             if(binary_length.size() < bits_length) {
                 carry = binary_length;
@@ -92,7 +92,7 @@ Node Decoder::recreate_huffman_tree() {
     const auto code_table = generate_codes();
 
     for(const auto& [symbol, code] : code_table) {
-        Node* current = &root;
+        auto* current = &root;
         for(const auto& position : code) {
             if(position == '0') {
                 if(!current->left) current->left = new Node{};
@@ -114,9 +114,9 @@ std::string Decoder::decode_content() {
     std::string output;
     const auto tree = recreate_huffman_tree();
 
-    std::string byte = next_byte().to_string();
+    auto byte = next_byte().to_string();
 
-    Node current = tree;
+    auto current = tree;
     for(size_t index = 0; index < byte.size(); index++) {
         const auto bit = byte.at(index);
 
@@ -139,7 +139,7 @@ std::string Decoder::decode_content() {
 }
 
 void Decoder::create_decompressed_file() {
-    std::string name = target_file_path.substr(0, target_file_path.find_last_of('.'));
+    const auto name = target_file_path.substr(0, target_file_path.find_last_of('.'));
     std::ofstream output_file(name, std::ios::out);
 
     const auto content = decode_content();

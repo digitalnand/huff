@@ -11,7 +11,7 @@ std::unordered_map<char, uint32_t> extract_frequencies(std::ifstream& input) {
     std::string line;
 
     while(std::getline(input, line)) {
-        for(const char& character : line + NEW_LINE) {
+        for(const auto& character : line + NEW_LINE) {
             if(character < FIRST_CHARACTER)
                 throw std::invalid_argument(std::format("unsupported character: {}\n", character));
             frequencies[character]++;
@@ -30,9 +30,9 @@ Node build_huffman_tree(const std::unordered_map<char, uint32_t>& frequencies) {
         nodes.push(Node{symbol, frequency});
 
     while(nodes.size() > 1) {
-        const Node first = nodes.top();
+        const auto first = nodes.top();
         nodes.pop();
-        const Node second = nodes.top();
+        const auto second = nodes.top();
         nodes.pop();
 
         Node parent;
@@ -135,7 +135,7 @@ std::vector<char> encode_codes_length(std::unordered_map<char, std::string>& cod
         const uint32_t code_length = code_table[character].size();
         std::string binary = std::bitset<MAX_BITS>(code_length).to_string().substr(MAX_BITS - bit_count);
 
-        for(const char& bit : binary) {
+        for(const auto& bit : binary) {
             buffer += bit;
             if(buffer.size() % 8 != 0) continue;
             output.push_back(std::stoi(buffer, nullptr, 2));
@@ -158,8 +158,8 @@ std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, s
     std::string line;
 
     while(std::getline(file, line)) {
-        for(const char& character : line + NEW_LINE) {
-            const std::string code = code_table[character];
+        for(const auto& character : line + NEW_LINE) {
+            const auto code = code_table[character];
             for(size_t index = 0; index < code.size(); index++) {
                 buffer += code.at(index);
                 if(buffer.size() % 8 != 0) continue;
@@ -188,20 +188,20 @@ void create_compressed_file(const std::string& file_path) {
     std::ofstream output_file(std::format("{}.hf", file_path), std::ios::binary | std::ios::out);
     std::ifstream input_file(file_path);
 
-    const std::unordered_map<char, uint32_t> frequencies = extract_frequencies(input_file);
-    const Node tree = build_huffman_tree(frequencies);
+    const auto frequencies = extract_frequencies(input_file);
+    const auto tree = build_huffman_tree(frequencies);
 
-    const std::vector<std::pair<char, std::string>> huffman_codes = generate_huffman_codes(tree);
-    std::unordered_map<char, std::string> canonical_codes = generate_canonical_codes(huffman_codes);
+    const auto huffman_codes = generate_huffman_codes(tree);
+    auto canonical_codes = generate_canonical_codes(huffman_codes);
 
     input_file.clear();
     input_file.seekg(0, input_file.beg);
 
-    const std::vector<char> encoded_codes = encode_codes_length(canonical_codes);
-    const std::vector<char> encoded_content = encode_content(input_file, canonical_codes);
+    const auto encoded_codes = encode_codes_length(canonical_codes);
+    const auto encoded_content = encode_content(input_file, canonical_codes);
 
-    for(const char& bit : encoded_codes) output_file.put(bit);
-    for(const char& bit : encoded_content) output_file.put(bit);
+    for(const auto& bit : encoded_codes) output_file.put(bit);
+    for(const auto& bit : encoded_content) output_file.put(bit);
 
     input_file.close();
     output_file.close();
