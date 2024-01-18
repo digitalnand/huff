@@ -54,10 +54,8 @@ std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length() {
     }
 
     std::sort(codes_length.begin(), codes_length.end(), [](const auto& left, const auto& right) {
-        const auto left_symbol = left.first;
-        const auto right_symbol = right.first;
-        const auto left_length = left.second;
-        const auto right_length = right.second;
+        const auto& [left_symbol, left_length] = left;
+        const auto& [right_symbol, right_length] = right;
         return (left_length == right_length) ? (left_symbol < right_symbol) : (left_length < right_length);
     });
 

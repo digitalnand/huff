@@ -53,26 +53,24 @@ std::vector<std::pair<char, std::string>> generate_huffman_codes(const Node& roo
     nodes.push(std::make_pair(root, std::string{}));
 
     while(!nodes.empty()) {
-        const Node current = nodes.top().first;
-        std::string code = nodes.top().second;
+        const auto [top_node, top_code] = nodes.top();
         nodes.pop();
 
-        if(current.left)
-            nodes.push(std::make_pair(*current.left, code + '0'));
+        if(top_node.left)
+            nodes.push(std::make_pair(*top_node.left, top_code + '0'));
 
-        if(current.right)
-            nodes.push(std::make_pair(*current.right, code + '1'));
+        if(top_node.right)
+            nodes.push(std::make_pair(*top_node.right, top_code + '1'));
 
-        if(current.symbol != '\0')
-            huffman_codes.emplace_back(current.symbol, code);
+        if(top_node.symbol != '\0')
+            huffman_codes.emplace_back(top_node.symbol, top_code);
     }
 
     std::sort(huffman_codes.begin(), huffman_codes.end(), [](const auto& left, const auto& right) {
-        const char left_symbol = left.first;
-        const char right_symbol = right.first;
-        const size_t left_size = left.second.size();
-        const size_t right_size = right.second.size();
-        return (left_size == right_size) ? (left_symbol < right_symbol) : (left_size < right_size);
+        const auto& [left_symbol, left_code] = left;
+        const auto& [right_symbol, right_code] = right;
+        return (left_code.size() == right_code.size()) ?
+                (left_symbol < right_symbol) : (left_code.size() < right_code.size());
     });
 
     return huffman_codes;
@@ -102,19 +100,19 @@ std::string next_binary(std::string number) {
 std::unordered_map<char, std::string> generate_canonical_codes(const std::vector<std::pair<char, std::string>>& huffman_codes) {
     std::unordered_map<char, std::string> canonical_codes;
 
-    const std::pair<char, std::string>& front_element = huffman_codes.front();
-    for(size_t index = 0; index < front_element.second.size(); index++)
-        canonical_codes[front_element.first] += '0';
+    const auto& [front_symbol, front_code] = huffman_codes.front();
+    for(size_t index = 0; index < front_code.size(); index++)
+        canonical_codes[front_symbol] += '0';
 
-    std::string last_code = canonical_codes[front_element.first];
+    auto last_code = canonical_codes[front_symbol];
     for(size_t index = 1; index < huffman_codes.size(); index++) {
-        const std::pair<char, std::string>& current_element = huffman_codes.at(index);
+        const auto& [current_symbol, current_code] = huffman_codes.at(index);
 
-        std::string current_code = next_binary(last_code);
-        while(current_code.size() < huffman_codes.at(index).second.size()) current_code += '0';
+        auto next_code = next_binary(last_code);
+        while(next_code.size() < current_code.size()) next_code += '0';
 
-        last_code = current_code;
-        canonical_codes[current_element.first] = current_code;
+        last_code = next_code;
+        canonical_codes[current_symbol] = next_code;
     }
 
     return canonical_codes;
