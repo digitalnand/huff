@@ -47,7 +47,7 @@ Node build_huffman_tree(const std::unordered_map<char, uint32_t>& frequencies) {
 }
 
 std::vector<std::pair<char, uint32_t>> get_huffman_codes_length(const Node& root) {
-    std::vector<std::pair<char, uint32_t>> huffman_codes;
+    std::vector<std::pair<char, uint32_t>> codes_length;
 
     std::stack<std::pair<Node, uint32_t>> nodes;
     nodes.push(std::make_pair(root, 0));
@@ -63,30 +63,30 @@ std::vector<std::pair<char, uint32_t>> get_huffman_codes_length(const Node& root
             nodes.push(std::make_pair(*top_node.right, top_length + 1));
 
         if(top_node.symbol != '\0')
-            huffman_codes.emplace_back(top_node.symbol, top_length);
+            codes_length.emplace_back(top_node.symbol, top_length);
     }
 
-    std::sort(huffman_codes.begin(), huffman_codes.end(), [](const auto& left, const auto& right) {
+    std::sort(codes_length.begin(), codes_length.end(), [](const auto& left, const auto& right) {
         const auto& [left_symbol, left_length] = left;
         const auto& [right_symbol, right_length] = right;
         return (left_length == right_length) ? (left_symbol < right_symbol) : (left_length < right_length);
     });
 
-    return huffman_codes;
+    return codes_length;
 }
 
-std::unordered_map<char, std::string> generate_canonical_codes(const std::vector<std::pair<char, uint32_t>>& huffman_codes) {
+std::unordered_map<char, std::string> generate_canonical_codes(const std::vector<std::pair<char, uint32_t>>& codes_length) {
     std::unordered_map<char, std::string> canonical_codes;
 
-    const auto& [front_symbol, front_length] = huffman_codes.front();
+    const auto& [front_symbol, front_length] = codes_length.front();
     for(size_t index = 0; index < front_length; index++)
         canonical_codes[front_symbol] += '0';
 
     uint8_t last_code = 0;
     size_t last_length = front_length;
 
-    for(size_t index = 1; index < huffman_codes.size(); index++) {
-        const auto& [current_symbol, current_length] = huffman_codes.at(index);
+    for(size_t index = 1; index < codes_length.size(); index++) {
+        const auto& [current_symbol, current_length] = codes_length.at(index);
 
         auto next_code = last_code + 1;
         size_t difference = current_length - last_length;
@@ -177,8 +177,8 @@ void create_compressed_file(const std::string& file_path) {
     const auto frequencies = extract_frequencies(input_file);
     const auto tree = build_huffman_tree(frequencies);
 
-    const auto huffman_codes = get_huffman_codes_length(tree);
-    auto canonical_codes = generate_canonical_codes(huffman_codes);
+    const auto codes_length = get_huffman_codes_length(tree);
+    auto canonical_codes = generate_canonical_codes(codes_length);
 
     input_file.clear();
     input_file.seekg(0, input_file.beg);
