@@ -1,3 +1,20 @@
+# Usage
+build the project
+```bash
+just setup && just build
+```
+to compress a file:
+```bash
+bin/huff --compress [target.txt]
+```
+to decompress a file:
+```bash
+bin/huff --decompress [target.txt.hf]
+```
+you can check the available options:
+```bash
+bin/huff --help
+```
 # Limitations
 - only supports characters from the ASCII table
 # References
