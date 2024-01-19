@@ -68,7 +68,7 @@ std::unordered_map<char, std::string> Decoder::regenerate_codes(const std::vecto
     for(size_t index = 0 ; index < front_length; index++)
         canonical_codes[front_symbol] += '0';
 
-    uint8_t last_code = 0;
+    uint16_t last_code = 0;
     auto last_length = front_length;
 
     for(size_t index = 1; index < codes_length.size(); index++) {
@@ -105,27 +105,23 @@ Node Decoder::recreate_huffman_tree(const std::unordered_map<char, std::string>&
     return root;
 }
 
-std::string Decoder::decode_content(const Node& tree) {
+std::string Decoder::decode_content(const Node& root) {
     std::string output;
+    auto current = root;
 
-    auto byte = next_byte().to_string();
+    while(true) {
+        const auto byte = next_byte().to_string();
+        for(size_t index = 0; index < byte.size(); index++) {
+            const auto bit = byte.at(index);
 
-    auto current = tree;
-    for(size_t index = 0; index < byte.size(); index++) {
-        const auto bit = byte.at(index);
+            if(bit == '0') current = *current.left;
+            if(bit == '1') current = *current.right;
 
-        if(bit == '0') current = *current.left;
-        if(bit == '1') current = *current.right;
-
-        if(current.symbol) {
-            if(current.symbol == END_OF_TEXT) break;
-            output += current.symbol;
-            current = tree;
-        }
-
-        if((index + 1) % 8 == 0) {
-            byte = next_byte().to_string();
-            index = -1;
+            if(current.symbol) {
+                if(current.symbol == END_OF_TEXT) return output;
+                output += current.symbol;
+                current = root;
+            }
         }
     }
 

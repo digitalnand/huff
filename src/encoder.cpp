@@ -82,7 +82,7 @@ std::unordered_map<char, std::string> generate_canonical_codes(const std::vector
     for(size_t index = 0; index < front_length; index++)
         canonical_codes[front_symbol] += '0';
 
-    uint8_t last_code = 0;
+    uint16_t last_code = 0;
     size_t last_length = front_length;
 
     for(size_t index = 1; index < codes_length.size(); index++) {
