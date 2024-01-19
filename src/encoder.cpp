@@ -6,11 +6,26 @@
 
 #include "encoder.hpp"
 
-std::unordered_map<char, uint32_t> extract_frequencies(std::ifstream& input) {
+Encoder::Encoder(const std::string& file_path) {
+    const auto extension = file_path.substr(file_path.find_last_of("."));
+    if(extension != ".txt")
+        throw std::runtime_error(std::format("file is not .txt: {}\n", file_path));
+
+    this->target.open(file_path);
+    if(!this->target.is_open())
+        throw std::runtime_error(std::format("could not open the file: {}\n", file_path));
+
+    this->target_path = file_path;
+}
+
+std::unordered_map<char, uint32_t> Encoder::extract_frequencies() {
     std::unordered_map<char, uint32_t> frequencies(SUPPORTED_CHARACTERS);
     std::string line;
 
-    while(std::getline(input, line)) {
+    this->target.clear();
+    this->target.seekg(0, this->target.beg);
+
+    while(std::getline(this->target, line)) {
         for(const auto& character : line + NEW_LINE) {
             if(character < FIRST_CHARACTER)
                 throw std::invalid_argument(std::format("unsupported character: {}\n", character));
@@ -23,7 +38,7 @@ std::unordered_map<char, uint32_t> extract_frequencies(std::ifstream& input) {
     return frequencies;
 }
 
-Node build_huffman_tree(const std::unordered_map<char, uint32_t>& frequencies) {
+Node Encoder::build_huffman_tree(const std::unordered_map<char, uint32_t>& frequencies) {
     min_priority_queue<Node> nodes;
 
     for(const auto& [symbol, frequency] : frequencies)
@@ -46,7 +61,7 @@ Node build_huffman_tree(const std::unordered_map<char, uint32_t>& frequencies) {
     return nodes.top();
 }
 
-std::vector<std::pair<char, uint32_t>> get_huffman_codes_length(const Node& root) {
+std::vector<std::pair<char, uint32_t>> Encoder::get_huffman_codes_length(const Node& root) {
     std::vector<std::pair<char, uint32_t>> codes_length;
 
     std::stack<std::pair<Node, uint32_t>> nodes;
@@ -75,12 +90,12 @@ std::vector<std::pair<char, uint32_t>> get_huffman_codes_length(const Node& root
     return codes_length;
 }
 
-std::unordered_map<char, std::string> generate_canonical_codes(const std::vector<std::pair<char, uint32_t>>& codes_length) {
-    std::unordered_map<char, std::string> canonical_codes;
+std::unordered_map<char, std::string> Encoder::generate_canonical_codes(const std::vector<std::pair<char, uint32_t>>& codes_length) {
+    std::unordered_map<char, std::string> codes;
 
     const auto& [front_symbol, front_length] = codes_length.front();
     for(size_t index = 0; index < front_length; index++)
-        canonical_codes[front_symbol] += '0';
+        codes[front_symbol] += '0';
 
     uint32_t last_code = 0;
     auto last_length = front_length;
@@ -88,17 +103,16 @@ std::unordered_map<char, std::string> generate_canonical_codes(const std::vector
     for(size_t index = 1; index < codes_length.size(); index++) {
         const auto& [current_symbol, current_length] = codes_length.at(index);
 
-        auto next_code = last_code + 1;
-        auto difference = current_length - last_length;
-        next_code <<= difference;
+        const auto difference = current_length - last_length;
+        const auto next_code = (last_code + 1) << difference;
 
-        canonical_codes[current_symbol] = std::bitset<MAX_BITS>(next_code).to_string().substr(MAX_BITS - current_length);
+        codes[current_symbol] = std::bitset<MAX_BITS>(next_code).to_string().substr(MAX_BITS - current_length);
 
         last_code = next_code;
         last_length = current_length;
     }
 
-    return canonical_codes;
+    return codes;
 }
 
 inline void append_byte(std::string& buffer, std::vector<char>& target) {
@@ -110,22 +124,22 @@ inline void fill(std::string& buffer) {
     while(buffer.size() % 8 != 0) buffer += '0';
 }
 
-std::vector<char> encode_codes_length(const std::unordered_map<char, std::string>& code_table) {
+std::vector<char> Encoder::encode_codes_length(const std::unordered_map<char, std::string>& code_table) {
     std::vector<char> output;
     std::string buffer;
 
-    uint32_t largest_code_length = 0;
-    for(const auto& [symbol, code] : code_table) {
-        if(code.size() < largest_code_length) continue;
-        largest_code_length = code.size();
+    uint32_t longest_length = 0;
+    for(const auto& [_, code] : code_table) {
+        if(code.size() < longest_length) continue;
+        longest_length = code.size();
     }
-    const uint32_t bit_count = std::log2(largest_code_length) + 1;
 
+    const uint32_t bit_count = std::log2(longest_length) + 1;
     output.push_back(bit_count);
 
     for(char character = FIRST_CHARACTER; character < SUPPORTED_CHARACTERS; character++) {
-        const uint32_t code_length = code_table.contains(character) ? code_table.at(character).size() : 0;
-        std::string binary = std::bitset<MAX_BITS>(code_length).to_string().substr(MAX_BITS - bit_count);
+        const uint32_t length = code_table.contains(character) ? code_table.at(character).size() : 0;
+        std::string binary = std::bitset<MAX_BITS>(length).to_string().substr(MAX_BITS - bit_count);
 
         for(const auto& bit : binary) {
             buffer += bit;
@@ -141,13 +155,16 @@ std::vector<char> encode_codes_length(const std::unordered_map<char, std::string
     return output;
 }
 
-std::vector<char> encode_content(std::ifstream& file, const std::unordered_map<char, std::string>& code_table) {
+std::vector<char> Encoder::encode_content(const std::unordered_map<char, std::string>& code_table) {
     std::vector<char> output;
 
     std::string buffer;
     std::string line;
 
-    while(std::getline(file, line)) {
+    this->target.clear();
+    this->target.seekg(0, this->target.beg);
+
+    while(std::getline(this->target, line)) {
         for(const auto& character : line + NEW_LINE) {
             const auto code = code_table.at(character);
             for(size_t index = 0; index < code.size(); index++) {
@@ -171,25 +188,21 @@ std::vector<char> encode_content(std::ifstream& file, const std::unordered_map<c
     return output;
 }
 
-void create_compressed_file(const std::string& file_path) {
-    std::ofstream output_file(std::format("{}.hf", file_path), std::ios::binary | std::ios::out);
-    std::ifstream input_file(file_path);
+void Encoder::create_compressed_file() {
+    const auto frequencies = this->extract_frequencies();
+    const auto tree = this->build_huffman_tree(frequencies);
 
-    const auto frequencies = extract_frequencies(input_file);
-    const auto tree = build_huffman_tree(frequencies);
+    const auto codes_length = this->get_huffman_codes_length(tree);
+    const auto codes = this->generate_canonical_codes(codes_length);
 
-    const auto codes_length = get_huffman_codes_length(tree);
-    const auto canonical_codes = generate_canonical_codes(codes_length);
+    const auto encoded_length = this->encode_codes_length(codes);
+    const auto encoded_content = this->encode_content(codes);
 
-    input_file.clear();
-    input_file.seekg(0, input_file.beg);
+    std::ofstream output(std::format("{}.hf", this->target_path), std::ios::binary | std::ios::out);
 
-    const auto encoded_codes = encode_codes_length(canonical_codes);
-    const auto encoded_content = encode_content(input_file, canonical_codes);
+    for(const auto& bit : encoded_length) output.put(bit);
+    for(const auto& bit : encoded_content) output.put(bit);
 
-    for(const auto& bit : encoded_codes) output_file.put(bit);
-    for(const auto& bit : encoded_content) output_file.put(bit);
-
-    input_file.close();
-    output_file.close();
+    output.close();
+    this->target.close();
 }

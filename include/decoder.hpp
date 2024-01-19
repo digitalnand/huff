@@ -10,8 +10,8 @@
 
 struct Decoder {
     private:
-        std::ifstream file;
-        std::string target_file_path;
+        std::ifstream target;
+        std::string target_path;
         size_t index = 0;
 
         std::bitset<8> next_byte();

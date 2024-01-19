@@ -25,7 +25,8 @@ int32_t main(const int32_t argc, char* argv[]) {
                 break;
             case 'c': {
                 const auto file_path = std::string(optarg);
-                create_compressed_file(file_path);
+                Encoder encoder(file_path);
+                encoder.create_compressed_file();
                 break;
             }
             case 'd': {

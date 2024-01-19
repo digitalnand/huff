@@ -3,17 +3,17 @@
 
 #include "decoder.hpp"
 
-Decoder::Decoder(const std::string& compressed_file_path) {
-    file.open(compressed_file_path, std::ios::binary);
-    target_file_path = compressed_file_path;
+Decoder::Decoder(const std::string& file_path) {
+    target.open(file_path, std::ios::binary);
+    target_path = file_path;
 }
 
 std::bitset<8> Decoder::next_byte() {
-    file.clear();
-    file.seekg(index, std::ios::beg);
+    target.clear();
+    target.seekg(index, std::ios::beg);
 
     char buffer[8];
-    file.read(buffer, 8);
+    target.read(buffer, 8);
     index++;
 
     return std::bitset<8>(*buffer);
@@ -129,17 +129,17 @@ std::string Decoder::decode_content(const Node& root) {
 }
 
 void Decoder::create_decompressed_file() {
-    const auto name = target_file_path.substr(0, target_file_path.find_last_of('.'));
-    std::ofstream output_file(name, std::ios::out);
-
     const auto bits_length = decode_bits_length();
     const auto codes_length = decode_codes_length(bits_length);
+
     const auto codes = regenerate_codes(codes_length);
     const auto tree = recreate_huffman_tree(codes);
     const auto content = decode_content(tree);
 
-    output_file.write(content.c_str(), content.size());
+    const auto output_path = target_path.substr(0, target_path.find_last_of('.'));
+    std::ofstream output(output_path, std::ios::out);
+    output.write(content.c_str(), content.size());
+    output.close();
 
-    output_file.close();
-    file.close();
+    target.close();
 }
