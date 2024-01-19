@@ -5,7 +5,7 @@
 
 #define FIRST_CHARACTER 0
 #define SUPPORTED_CHARACTERS 127
-#define MAX_BITS (sizeof(int32_t) * 8)
+#define MAX_BITS (sizeof(uint32_t) * 8)
 
 #define NEW_LINE '\n'
 #define END_OF_TEXT '\x3'

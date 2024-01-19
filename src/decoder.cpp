@@ -19,12 +19,12 @@ std::bitset<8> Decoder::next_byte() {
     return std::bitset<8>(*buffer);
 }
 
-size_t Decoder::decode_bits_length() {
+uint32_t Decoder::decode_bits_length() {
     return next_byte().to_ulong();
 }
 
-std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length(const size_t& bits_length) {
-    std::vector<std::pair<char, uint16_t>> codes_length;
+std::vector<std::pair<char, uint32_t>> Decoder::decode_codes_length(const uint32_t& bits_length) {
+    std::vector<std::pair<char, uint32_t>> codes_length;
 
     std::string carry;
     char current = FIRST_CHARACTER;
@@ -45,7 +45,7 @@ std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length(const size_t
                 break;
             }
 
-            const uint16_t code_length = std::bitset<8>(binary_length).to_ulong();
+            const uint32_t code_length = std::bitset<8>(binary_length).to_ulong();
             if(code_length > 0) codes_length.emplace_back(current, code_length);
             current++;
         }
@@ -60,7 +60,7 @@ std::vector<std::pair<char, uint16_t>> Decoder::decode_codes_length(const size_t
     return codes_length;
 }
 
-std::unordered_map<char, std::string> Decoder::regenerate_codes(const std::vector<std::pair<char, uint16_t>>& codes_length) {
+std::unordered_map<char, std::string> Decoder::regenerate_codes(const std::vector<std::pair<char, uint32_t>>& codes_length) {
     std::unordered_map<char, std::string> canonical_codes;
 
     const auto& [front_symbol, front_length] = codes_length.front();
@@ -68,7 +68,7 @@ std::unordered_map<char, std::string> Decoder::regenerate_codes(const std::vecto
     for(size_t index = 0 ; index < front_length; index++)
         canonical_codes[front_symbol] += '0';
 
-    uint16_t last_code = 0;
+    uint32_t last_code = 0;
     auto last_length = front_length;
 
     for(size_t index = 1; index < codes_length.size(); index++) {

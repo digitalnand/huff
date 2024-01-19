@@ -5,18 +5,7 @@
 #include "encoder.hpp"
 #include "decoder.hpp"
 
-void print_help(char* executable_name, struct option* options, size_t options_size) {
-    std::cout << std::format("Usage: {} [OPTIONS] INPUT\n\n", executable_name);
-    std::cout << "Options:\n";
-    for(size_t index = 0; index < options_size; index++) {
-        const auto& current_option = options[index];
-
-        std::cout << std::format("\t-{}, --{}", (char) current_option.val, current_option.name);
-        if(current_option.has_arg == required_argument) std::cout << " [argument]";
-
-        std::cout << "\n";
-    }
-}
+void print_help(char*, struct option*, size_t);
 
 int32_t main(int32_t argc, char* argv[]) {
     static struct option long_options[] = {
@@ -48,4 +37,17 @@ int32_t main(int32_t argc, char* argv[]) {
         }
     }
     return 0;
+}
+
+void print_help(char* executable_name, struct option* options, size_t options_size) {
+    std::cout << std::format("Usage: {} [OPTIONS] INPUT\n\n", executable_name);
+    std::cout << "Options:\n";
+    for(size_t index = 0; index < options_size; index++) {
+        const auto& current_option = options[index];
+
+        std::cout << std::format("\t-{}, --{}", (char) current_option.val, current_option.name);
+        if(current_option.has_arg == required_argument) std::cout << " [argument]";
+
+        std::cout << "\n";
+    }
 }

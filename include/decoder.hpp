@@ -15,9 +15,9 @@ struct Decoder {
         size_t index = 0;
 
         std::bitset<8> next_byte();
-        size_t decode_bits_length();
-        std::vector<std::pair<char, uint16_t>> decode_codes_length(const size_t&);
-        std::unordered_map<char, std::string> regenerate_codes(const std::vector<std::pair<char, uint16_t>>&);
+        uint32_t decode_bits_length();
+        std::vector<std::pair<char, uint32_t>> decode_codes_length(const uint32_t&);
+        std::unordered_map<char, std::string> regenerate_codes(const std::vector<std::pair<char, uint32_t>>&);
         Node recreate_huffman_tree(const std::unordered_map<char, std::string>&);
         std::string decode_content(const Node&);
 
