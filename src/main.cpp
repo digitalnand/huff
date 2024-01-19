@@ -5,9 +5,9 @@
 #include "encoder.hpp"
 #include "decoder.hpp"
 
-void print_help(char*, struct option*, size_t);
+void print_help(const char*, const struct option*, const size_t);
 
-int32_t main(int32_t argc, char* argv[]) {
+int32_t main(const int32_t argc, char* argv[]) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"compress", required_argument, 0, 'c'},
@@ -39,7 +39,7 @@ int32_t main(int32_t argc, char* argv[]) {
     return 0;
 }
 
-void print_help(char* executable_name, struct option* options, size_t options_size) {
+void print_help(const char* executable_name, const struct option* options, const size_t options_size) {
     std::cout << std::format("Usage: {} [OPTIONS] INPUT\n\n", executable_name);
     std::cout << "Options:\n";
     for(size_t index = 0; index < options_size; index++) {

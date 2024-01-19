@@ -110,7 +110,7 @@ inline void fill(std::string& buffer) {
     while(buffer.size() % 8 != 0) buffer += '0';
 }
 
-std::vector<char> encode_codes_length(std::unordered_map<char, std::string>& code_table) {
+std::vector<char> encode_codes_length(const std::unordered_map<char, std::string>& code_table) {
     std::vector<char> output;
     std::string buffer;
 
@@ -124,7 +124,7 @@ std::vector<char> encode_codes_length(std::unordered_map<char, std::string>& cod
     output.push_back(bit_count);
 
     for(char character = FIRST_CHARACTER; character < SUPPORTED_CHARACTERS; character++) {
-        const uint32_t code_length = code_table[character].size();
+        const uint32_t code_length = code_table.contains(character) ? code_table.at(character).size() : 0;
         std::string binary = std::bitset<MAX_BITS>(code_length).to_string().substr(MAX_BITS - bit_count);
 
         for(const auto& bit : binary) {
@@ -141,7 +141,7 @@ std::vector<char> encode_codes_length(std::unordered_map<char, std::string>& cod
     return output;
 }
 
-std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, std::string>& code_table) {
+std::vector<char> encode_content(std::ifstream& file, const std::unordered_map<char, std::string>& code_table) {
     std::vector<char> output;
 
     std::string buffer;
@@ -149,7 +149,7 @@ std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, s
 
     while(std::getline(file, line)) {
         for(const auto& character : line + NEW_LINE) {
-            const auto code = code_table[character];
+            const auto code = code_table.at(character);
             for(size_t index = 0; index < code.size(); index++) {
                 buffer += code.at(index);
                 if(buffer.size() % 8 == 0) append_byte(buffer, output);
@@ -157,8 +157,9 @@ std::vector<char> encode_content(std::ifstream& file, std::unordered_map<char, s
         }
     }
 
-    for(size_t index = 0; index < code_table[END_OF_TEXT].size(); index++) {
-        buffer += code_table[END_OF_TEXT].at(index);
+    const auto eot_code = code_table.at(END_OF_TEXT);
+    for(size_t index = 0; index < eot_code.size(); index++) {
+        buffer += eot_code.at(index);
         if(buffer.size() % 8 == 0) append_byte(buffer, output);
     }
 
@@ -178,7 +179,7 @@ void create_compressed_file(const std::string& file_path) {
     const auto tree = build_huffman_tree(frequencies);
 
     const auto codes_length = get_huffman_codes_length(tree);
-    auto canonical_codes = generate_canonical_codes(codes_length);
+    const auto canonical_codes = generate_canonical_codes(codes_length);
 
     input_file.clear();
     input_file.seekg(0, input_file.beg);
